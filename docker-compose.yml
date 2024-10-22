@@ -1,0 +1,8 @@
+services:
+  secure-chain:
+    build: .
+    container_name: secure-chain
+    ports:
+      - "3030:3030" # Jena Fuseki
+      - "80:80" # NGINX static file server
+    entrypoint: /entrypoint.sh
