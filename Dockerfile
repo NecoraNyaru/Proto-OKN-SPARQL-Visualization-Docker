@@ -23,24 +23,27 @@ RUN wget https://dlcdn.apache.org/jena/binaries/apache-jena-${JENA_VERSION}.zip 
 COPY fuseki/fuseki-config.ttl $JENA_FUSEKI_HOME/configuration/fuseki-config.ttl
 RUN sed -i "s?{{JENA_FUSEKI_HOME}}?$JENA_FUSEKI_HOME?g" $JENA_FUSEKI_HOME/configuration/fuseki-config.ttl
 
-# Step 5: Configure Nginx to serve the dist directory
+# Step 5: Modify webapp/index.html to insert Google Analytics code
+RUN sed -i '/<\/head>/i <!-- Google tag (gtag.js) -->\n<script async src="https://www.googletagmanager.com/gtag/js?id=G-7C29LFPZT2"></script>\n<script>\n  window.dataLayer = window.dataLayer || [];\n  function gtag(){dataLayer.push(arguments);}\n  gtag('"'"'js'"'"', new Date());\n  gtag('"'"'config'"'"', '"'"'G-7C29LFPZT2'"'"');\n</script>' $JENA_FUSEKI_HOME/webapp/index.html
+
+# Step 6: Configure Nginx to serve the dist directory
 RUN rm /etc/nginx/sites-enabled/default
 COPY visualization/dist /usr/share/nginx/html
 COPY nginx/nginx.conf /etc/nginx/conf.d/default.conf
 
-# Step 6: Copy the TDB2 database file and create the database
+# Step 7: Copy the TDB2 database file and create the database
 RUN mkdir -p $JENA_FUSEKI_HOME/rdf-data \
     && LATEST_RELEASE_URL=$(curl -s https://api.github.com/repos/purdue-hcss/secure-chain-knowledge-graph/releases/latest | jq -r '.assets[] | select(.name=="secure-chain.ttl") | .browser_download_url') \
     && wget $LATEST_RELEASE_URL -O $JENA_FUSEKI_HOME/rdf-data/secure-chain.ttl
 # Create the TDB2 database from the RDF file
 RUN $JENA_HOME/bin/tdb2.tdbloader --loc=$JENA_FUSEKI_HOME/tdb2/secure-chain $JENA_FUSEKI_HOME/rdf-data/secure-chain.ttl
 
-# Step 7: Expose default Fuseki port and Nginx port
+# Step 8: Expose default Fuseki port and Nginx port
 EXPOSE 3030 80
 
-# Step 8: Create an entrypoint script
+# Step 9: Create an entrypoint script
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
-# Step 9: Set the entrypoint to start Fuseki and Nginx
+# Step 10: Set the entrypoint to start Fuseki and Nginx
 ENTRYPOINT ["/entrypoint.sh"]
